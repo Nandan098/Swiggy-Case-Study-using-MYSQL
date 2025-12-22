@@ -53,14 +53,16 @@
 #### QUESTIONS
 
 -- Q1. Find customers who have never ordered
+```sql
 SELECT user_id, name
 FROM users
 WHERE user_id NOT IN (
     SELECT DISTINCT user_id
     FROM orders
 );
-
+```
 -- Q2. Average price per dish
+```sql
 SELECT f.f_id,
        f.f_name,
        ROUND(AVG(m.price), 2) AS avg_price_per_dish
@@ -68,8 +70,9 @@ FROM food f
 JOIN menu m
 ON f.f_id = m.f_id
 GROUP BY f.f_id, f.f_name;
-
+```
 -- Q3. Find the top restaurant in terms of number of orders for a given month (June)
+```sql
 SELECT r.r_id,
        r.r_name,
        COUNT(*) AS no_of_orders
@@ -80,8 +83,9 @@ WHERE MONTH(o.date) = 6
 GROUP BY r.r_id, r.r_name
 ORDER BY no_of_orders DESC
 LIMIT 1;
-
+```
 -- Q4. Restaurants with monthly sales greater than 500
+```sql
 SELECT r.r_id,
        r.r_name,
        SUM(o.amount) AS total_sales
@@ -91,8 +95,9 @@ ON r.r_id = o.r_id
 GROUP BY r.r_id, r.r_name
 HAVING total_sales > 500
 ORDER BY total_sales DESC;
-
+```
 -- Q5. Show all orders with order details for a particular customer in a particular date range
+```sql
 SELECT o.user_id,
        o.order_id,
        r.r_name,
@@ -106,8 +111,9 @@ JOIN restaurants r
 ON o.r_id = r.r_id
 WHERE o.user_id = 1
 AND o.date BETWEEN '2022-06-10' AND '2022-07-10';
-
+```
 -- Q6. Find restaurants with max repeated customers
+```sql
 SELECT r_name,
        name AS loyal_customer
 FROM (
@@ -125,8 +131,9 @@ FROM (
     GROUP BY r.r_id, r.r_name, u.user_id, u.name
 ) t
 WHERE ranks = 1;
-
+```
 -- Q7. Running revenue by month
+```sql
 SELECT month,
        revenue,
        SUM(revenue) OVER (ORDER BY month) AS running_revenue
@@ -136,8 +143,9 @@ FROM (
     FROM orders
     GROUP BY MONTH(date)
 ) t;
-
+```
 -- Q8. Month-over-month revenue growth
+```sql
 WITH t AS (
     SELECT MONTH(date) AS month,
            SUM(amount) AS revenue
@@ -151,8 +159,9 @@ SELECT month,
            LAG(revenue) OVER (ORDER BY month),
        2) AS growth_percent
 FROM t;
-
+```
 -- Q9. Customer favorite food
+```sql
 SELECT name,
        f_name AS favourite_food
 FROM (
@@ -169,3 +178,4 @@ FROM (
     JOIN food f
     ON od.f_id = f.f_id
     GROUP BY u.user_id, u._
+```
