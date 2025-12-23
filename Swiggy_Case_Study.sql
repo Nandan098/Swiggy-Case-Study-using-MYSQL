@@ -222,105 +222,127 @@ INSERT INTO ORDER_DETAILS (ID, ORDER_ID, F_ID) VALUES
 (50, 1025, 5);
 
 
-                                               -- Questions
-                                               
--- 1. Find customers who have never ordered ?
-      select user_id,name
-      from users
-      where user_id not in (select distinct user_id from orders);
-      
-      
--- 2. Average Price/dish
-      select f.f_id,f.f_name,round(avg(m.price),2) as avg_price_per_dish
-      from food as f
-      join
-      menu as m
-      on f.f_id=m.f_id
-      group by f.f_id,f.f_name;
-      
--- 3. Find the top restaurant in terms of the number of orders for a given month
-      select r.r_id,r.r_name,count(*) as no_of_orders
-      from restaurants as r
-      join
-      orders as o
-      on r.r_id=o.r_id
-      where month(o.date)=6
-      group by r.r_id,r.r_name
-      order by no_of_orders desc
-      limit 3;
-      
--- 4. restaurants with monthly sales greater than 500 ? 
-      select r.r_id,r.r_name,sum(o.amount) as total_sales
-      from restaurants as r
-      join
-      orders as o
-      on r.r_id=o.r_id
-      group by r.r_id,r.r_name
-      where 
-      having total_sales>200
-      order by total_sales desc;
-      
--- 5. Show all orders with order details for a particular customer in a particular date range ?
-      select o.user_id,o.order_id,r.r_name,f.f_name
-      from orders as o
-      join
-      order_details as od
-      join
-      food as f
-      join 
-      restaurants as r
-      on o.order_id=od.order_id
-      and od.f_id=f.f_id
-      and o.r_id=r.r_id
-      where o.user_id=1
-      and o.date between '2022-06-10' and '2022-07-10'
-      group by o.user_id,o.order_id,r.r_name,f.f_name;
-      
-      
--- 6. Find restaurants with max repeated customers
-      select  r_name,name as loyal_customer from ( select r.r_id,r.r_name,u.user_id,u.name,count(*) as loyal_customer, rank() over(partition by r_id,r_name order by count(*) desc) as ranks
-      from restaurants as r
-      join
-      users as u
-      join
-      orders as o
-      on r.r_id=o.r_id
-      and u.user_id=o.user_id
-      group by r.r_id,r.r_name,u.user_id,u.name) as t
-      where ranks=1;
-      
--- 7. running revenue by month
-     select month_name,revenue,sum(revenue) over(rows between unbounded preceding and current row) as running_revenue 
-     from (select monthname(date) as month_name,round(sum(amount),2) as revenue
-		   from orders as o
-		   group by month_name) as t;
-     
--- 8. Month over month revenue growth of swiggy
-      with t as ( select monthname(date) as month_name,sum(amount) as revenue
-                  from orders
-				  group by month_name)
-		
-	 select month_name,revenue,(revenue - lag(revenue) over())*100.0/lag(revenue) over() as growth_percent 
-     from t;
-     
-      
-      
--- 9. Customer - favorite food
-      select name,f_name as favourite_food
-	  from ( select u.user_id,u.name,f.f_name,count(*) as number_of_times_ordered,rank() over(partition by u.name order by count(*) desc) as ranks
-		     from users as u
-			 join 
-			 orders as o
-			 join
-			 order_details as od
-			 join
-			 food as f
-			 on u.user_id=o.user_id
-			 and o.order_id=od.order_id
-			 and od.f_id=f.f_id
-			 group by u.user_id,u.name,f.f_name) as t
-		where ranks=1;
- 
- -- 10. 
-	
-      
+
+															  -- QUESTIONS
+                                                              
+-- Q1. Find customers who have never ordered 
+SELECT user_id, name
+FROM users
+WHERE user_id NOT IN (
+    SELECT DISTINCT user_id
+    FROM orders
+);
+
+-- Q2. Average price per dish
+SELECT f.f_id,
+       f.f_name,
+       ROUND(AVG(m.price), 2) AS avg_price_per_dish
+FROM food f
+JOIN menu m
+ON f.f_id = m.f_id
+GROUP BY f.f_id, f.f_name;
+
+-- Q3. Find the top restaurant in terms of number of orders for a given month (June)
+SELECT r.r_id,
+       r.r_name,
+       COUNT(*) AS no_of_orders
+FROM restaurants r
+JOIN orders o
+ON r.r_id = o.r_id
+WHERE MONTH(o.date) = 6
+GROUP BY r.r_id, r.r_name
+ORDER BY no_of_orders DESC
+LIMIT 1;
+
+-- Q4. Restaurants with monthly sales greater than 500
+SELECT r.r_id,
+       r.r_name,
+       SUM(o.amount) AS total_sales
+FROM restaurants r
+JOIN orders o
+ON r.r_id = o.r_id
+GROUP BY r.r_id, r.r_name
+HAVING total_sales > 500
+ORDER BY total_sales DESC;
+
+-- Q5. Show all orders with order details for a particular customer in a particular date range
+SELECT o.user_id,
+       o.order_id,
+       r.r_name,
+       f.f_name
+FROM orders o
+JOIN order_details od
+ON o.order_id = od.order_id
+JOIN food f
+ON od.f_id = f.f_id
+JOIN restaurants r
+ON o.r_id = r.r_id
+WHERE o.user_id = 1
+AND o.date BETWEEN '2022-06-10' AND '2022-07-10';
+
+-- Q6. Find restaurants with max repeated customers
+SELECT r_name,
+       name AS loyal_customer
+FROM (
+    SELECT r.r_id,
+           r.r_name,
+           u.user_id,
+           u.name,
+           COUNT(*) AS order_count,
+           RANK() OVER (PARTITION BY r.r_id ORDER BY COUNT(*) DESC) AS ranks
+    FROM restaurants r
+    JOIN orders o
+    ON r.r_id = o.r_id
+    JOIN users u
+    ON u.user_id = o.user_id
+    GROUP BY r.r_id, r.r_name, u.user_id, u.name
+) t
+WHERE ranks = 1;
+
+-- Q7. Running revenue by month
+SELECT month,
+       revenue,
+       SUM(revenue) OVER (ORDER BY month) AS running_revenue
+FROM (
+    SELECT MONTH(date) AS month,
+           SUM(amount) AS revenue
+    FROM orders
+    GROUP BY MONTH(date)
+) t;
+
+-- Q8. Month-over-month revenue growth
+WITH t AS (
+    SELECT MONTH(date) AS month,
+           SUM(amount) AS revenue
+    FROM orders
+    GROUP BY MONTH(date)
+)
+SELECT month,
+       revenue,
+       ROUND(
+           (revenue - LAG(revenue) OVER (ORDER BY month)) * 100.0 /
+           LAG(revenue) OVER (ORDER BY month),
+       2) AS growth_percent
+FROM t;
+
+-- Q9. Customer favorite food
+SELECT name,
+       f_name AS favourite_food
+FROM (
+    SELECT u.user_id,
+           u.name,
+           f.f_name,
+           COUNT(*) AS order_count,
+           RANK() OVER (PARTITION BY u.user_id ORDER BY COUNT(*) DESC) AS ranks
+    FROM users u
+    JOIN orders o
+    ON u.user_id = o.user_id
+    JOIN order_details od
+    ON o.order_id = od.order_id
+    JOIN food f
+    ON od.f_id = f.f_id
+    GROUP BY u.user_id, u.name, f.f_name
+) t
+WHERE ranks = 1;
+
+
